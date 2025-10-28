@@ -6,9 +6,10 @@ import { Language } from '../types';
 
 interface LoginPageProps {
   onLogin: (user: string, pass: string) => Promise<boolean>;
+  onBypass: () => void;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBypass }) => {
   const { language, setLanguage, t } = useContext(AppContext);
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('admin2');
@@ -70,6 +71,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             {isLoading ? 'Logging in...' : t('login')}
           </button>
         </form>
+        <div className="mt-4 text-center">
+            <button
+                onClick={onBypass}
+                className="w-full py-2 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600 transition-colors shadow-md"
+            >
+                Bypass Login (For Development)
+            </button>
+        </div>
       </div>
     </div>
   );
