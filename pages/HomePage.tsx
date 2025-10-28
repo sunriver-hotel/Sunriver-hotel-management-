@@ -4,13 +4,12 @@ import { AppContext } from '../App';
 import { ChevronLeftIcon, ChevronRightIcon } from '../components/Icons';
 import BookingModal from '../components/BookingModal';
 import { Booking, PageProps } from '../types';
-import { TOTAL_ROOMS } from '../constants';
 
 const Calendar: React.FC<{ 
   onDateClick: (date: Date) => void,
   bookedCounts: Record<string, number> 
 }> = ({ onDateClick, bookedCounts }) => {
-  const { t } = useContext(AppContext);
+  const { t, allRooms } = useContext(AppContext);
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
@@ -29,7 +28,7 @@ const Calendar: React.FC<{
     const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
     const dateString = date.toISOString().split('T')[0];
     const bookedCount = bookedCounts[dateString] || 0;
-    const vacantCount = TOTAL_ROOMS - bookedCount;
+    const vacantCount = allRooms.length - bookedCount;
     const isFull = vacantCount <= 0;
 
     calendarDays.push(

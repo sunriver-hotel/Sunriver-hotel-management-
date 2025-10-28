@@ -8,7 +8,7 @@ import CleaningPage from './pages/CleaningPage';
 import ReceiptPage from './pages/ReceiptPage';
 import Layout from './components/Layout';
 import { Booking, Room, CleaningStatus, Language, Translations } from './types';
-import { ALL_ROOMS, translations } from './constants';
+import { translations } from './constants';
 
 export const AppContext = React.createContext<{
   language: Language;
@@ -16,53 +16,72 @@ export const AppContext = React.createContext<{
   t: (key: keyof Translations[Language]) => string;
   logout: () => void;
   bookings: Booking[];
-  addBooking: (booking: Omit<Booking, 'id' | 'createdAt'>) => void;
-  updateBooking: (booking: Booking) => void;
-  deleteBooking: (bookingId: string) => void;
+  addBooking: (booking: Omit<Booking, 'id' | 'createdAt'>) => Promise<void>;
+  updateBooking: (booking: Booking) => Promise<void>;
+  deleteBooking: (bookingId: string) => Promise<void>;
   allRooms: Room[];
   cleaningStatuses: Record<string, CleaningStatus>;
-  updateCleaningStatus: (roomNumber: string, status: 'Clean' | 'Needs Cleaning') => void;
+  updateCleaningStatus: (roomNumber: string, status: 'Clean' | 'Needs Cleaning') => Promise<void>;
   runDailyCleaningReset: () => void;
   logoUrl: string | null;
   setLogoUrl: (url: string | null) => void;
 }>({} as any);
 
 const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => !!localStorage.getItem('isAuthenticated'));
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => !!sessionStorage.getItem('isAuthenticated'));
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('language') as Language) || 'th');
   const [logoUrl, setLogoUrl] = useState<string | null>(() => localStorage.getItem('logoUrl'));
   
-  const [bookings, setBookings] = useState<Booking[]>(() => {
-    const savedBookings = localStorage.getItem('bookings');
-    return savedBookings ? JSON.parse(savedBookings) : [];
-  });
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [allRooms, setAllRooms] = useState<Room[]>([]);
+  const [cleaningStatuses, setCleaningStatuses] = useState<Record<string, CleaningStatus>>({});
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [cleaningStatuses, setCleaningStatuses] = useState<Record<string, CleaningStatus>>(() => {
-    const savedStatuses = localStorage.getItem('cleaningStatuses');
-    if (savedStatuses) {
-      return JSON.parse(savedStatuses);
+  // Data fetching from API
+  useEffect(() => {
+    if (isAuthenticated) {
+      const fetchData = async () => {
+        try {
+          setIsLoading(true);
+          const [bookingsRes, roomsRes, cleaningRes] = await Promise.all([
+            fetch('/api/bookings'),
+            fetch('/api/rooms'),
+            fetch('/api/cleaning-statuses')
+          ]);
+
+          const bookingsData = await bookingsRes.json();
+          const roomsData = await roomsRes.json();
+          const cleaningData = await cleaningRes.json();
+          
+          setBookings(bookingsData.bookings || []);
+          setAllRooms(roomsData.rooms || []);
+          
+          const cleaningMap: Record<string, CleaningStatus> = {};
+          (cleaningData.statuses || []).forEach((s: any) => {
+            cleaningMap[s.room.room_number] = { roomNumber: s.room.room_number, status: s.status };
+          });
+          setCleaningStatuses(cleaningMap);
+
+        } catch (error) {
+          console.error("Failed to fetch initial data:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchData();
     }
-    const initialStatuses: Record<string, CleaningStatus> = {};
-    ALL_ROOMS.forEach(room => {
-      initialStatuses[room.number] = { roomNumber: room.number, status: 'Clean' };
-    });
-    return initialStatuses;
-  });
-
-  useEffect(() => {
-    localStorage.setItem('bookings', JSON.stringify(bookings));
-  }, [bookings]);
-  
-  useEffect(() => {
-    localStorage.setItem('cleaningStatuses', JSON.stringify(cleaningStatuses));
-  }, [cleaningStatuses]);
+  }, [isAuthenticated]);
   
   useEffect(() => {
     localStorage.setItem('language', language);
   }, [language]);
   
   useEffect(() => {
-    localStorage.setItem('isAuthenticated', isAuthenticated ? 'true' : '');
+    if (isAuthenticated) {
+        sessionStorage.setItem('isAuthenticated', 'true');
+    } else {
+        sessionStorage.removeItem('isAuthenticated');
+    }
   }, [isAuthenticated]);
   
   useEffect(() => {
@@ -73,12 +92,22 @@ const App: React.FC = () => {
     }
   }, [logoUrl]);
 
-  const login = useCallback((user: string, pass: string) => {
-    if (user === 'admin' && pass === 'admin2') {
-      setIsAuthenticated(true);
-      return true;
+  const login = useCallback(async (user: string, pass: string) => {
+    try {
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, password: pass })
+        });
+        if (response.ok) {
+            setIsAuthenticated(true);
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error("Login failed:", error);
+        return false;
     }
-    return false;
   }, []);
 
   const logout = useCallback(() => {
@@ -86,66 +115,80 @@ const App: React.FC = () => {
   }, []);
 
   const t = useCallback((key: keyof Translations[Language]) => {
-    // FIX: The original implementation could return a number if a numeric key was not found in translations, causing a type mismatch.
-    // String() ensures the return type is always a string, satisfying the AppContext type.
     return String(translations[language][key] || key);
   }, [language]);
 
-  const addBooking = useCallback((booking: Omit<Booking, 'id' | 'createdAt'>) => {
-    const newBooking: Booking = {
-      ...booking,
-      id: `SR${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    };
-    setBookings(prev => [...prev, newBooking]);
+  const addBooking = useCallback(async (bookingData: Omit<Booking, 'id' | 'createdAt'>) => {
+    try {
+        const response = await fetch('/api/bookings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bookingData)
+        });
+        if (!response.ok) throw new Error('Failed to add booking');
+        const newBooking = await response.json();
+        setBookings(prev => [...prev, newBooking.booking]);
+    } catch (error) {
+        console.error("Error adding booking:", error);
+    }
   }, []);
 
-  const updateBooking = useCallback((updatedBooking: Booking) => {
-    setBookings(prev => prev.map(b => b.id === updatedBooking.id ? updatedBooking : b));
+  const updateBooking = useCallback(async (updatedBooking: Booking) => {
+    try {
+        const response = await fetch(`/api/bookings?id=${updatedBooking.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedBooking)
+        });
+        if (!response.ok) throw new Error('Failed to update booking');
+        const result = await response.json();
+        setBookings(prev => prev.map(b => b.id === result.booking.id ? result.booking : b));
+    } catch (error) {
+        console.error("Error updating booking:", error);
+    }
   }, []);
 
-  const deleteBooking = useCallback((bookingId: string) => {
-    setBookings(prev => prev.filter(b => b.id !== bookingId));
+  const deleteBooking = useCallback(async (bookingId: string) => {
+    try {
+        const response = await fetch(`/api/bookings?id=${bookingId}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) throw new Error('Failed to delete booking');
+        setBookings(prev => prev.filter(b => b.id !== bookingId));
+    } catch (error) {
+        console.error("Error deleting booking:", error);
+    }
   }, []);
   
-  const updateCleaningStatus = useCallback((roomNumber: string, status: 'Clean' | 'Needs Cleaning') => {
-    setCleaningStatuses(prev => ({
-      ...prev,
-      [roomNumber]: { ...prev[roomNumber], status }
-    }));
+  const updateCleaningStatus = useCallback(async (roomNumber: string, status: 'Clean' | 'Needs Cleaning') => {
+    try {
+        const response = await fetch('/api/cleaning-statuses', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roomNumber, status })
+        });
+        if (!response.ok) throw new Error('Failed to update status');
+        setCleaningStatuses(prev => ({
+            ...prev,
+            [roomNumber]: { ...prev[roomNumber], status }
+        }));
+    } catch (error) {
+        console.error("Error updating cleaning status:", error);
+    }
   }, []);
 
   const runDailyCleaningReset = useCallback(() => {
-      const today = new Date();
-      today.setHours(0,0,0,0);
-
-      const occupiedRoomNumbers = new Set<string>();
-      bookings.forEach(booking => {
-          const checkIn = new Date(booking.checkIn);
-          checkIn.setHours(0,0,0,0);
-          const checkOut = new Date(booking.checkOut);
-          checkOut.setHours(0,0,0,0);
-          if(today >= checkIn && today < checkOut) {
-              booking.rooms.forEach(roomNum => occupiedRoomNumbers.add(roomNum));
-          }
-      });
-
-      const newStatuses = { ...cleaningStatuses };
-      let changed = false;
-      occupiedRoomNumbers.forEach(roomNumber => {
-          if (newStatuses[roomNumber].status !== 'Needs Cleaning') {
-              newStatuses[roomNumber].status = 'Needs Cleaning';
-              changed = true;
-          }
-      });
-      if (changed) {
-          setCleaningStatuses(newStatuses);
-      }
-  }, [bookings, cleaningStatuses]);
+      // This would be triggered by a cron job on the server in a real deployment.
+      // The client-side simulation is no longer needed.
+      console.log("Daily cleaning reset should be handled by a server-side cron job.");
+  }, []);
 
   const [activePage, setActivePage] = useState('home');
 
   const renderPage = () => {
+    if (isLoading) {
+      return <div className="flex justify-center items-center h-full">Loading...</div>;
+    }
     switch (activePage) {
       case 'home':
         return <HomePage setActivePage={setActivePage} />;
@@ -171,13 +214,13 @@ const App: React.FC = () => {
     addBooking,
     updateBooking,
     deleteBooking,
-    allRooms: ALL_ROOMS,
+    allRooms,
     cleaningStatuses,
     updateCleaningStatus,
     runDailyCleaningReset,
     logoUrl,
     setLogoUrl,
-  }), [language, t, logout, bookings, addBooking, updateBooking, deleteBooking, cleaningStatuses, updateCleaningStatus, runDailyCleaningReset, logoUrl]);
+  }), [language, t, logout, bookings, addBooking, updateBooking, deleteBooking, allRooms, cleaningStatuses, updateCleaningStatus, runDailyCleaningReset, logoUrl]);
 
   if (!isAuthenticated) {
     return (

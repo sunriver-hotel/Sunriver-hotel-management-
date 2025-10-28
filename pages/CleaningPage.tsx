@@ -1,31 +1,12 @@
-import React, { useContext, useMemo, useState, useEffect } from 'react';
+
+import React, { useContext, useMemo, useState } from 'react';
 import { AppContext } from '../App';
 import ConfirmationModal from '../components/ConfirmationModal';
 
 
 const CleaningPage: React.FC = () => {
-  const { allRooms, cleaningStatuses, updateCleaningStatus, bookings, t, runDailyCleaningReset } = useContext(AppContext);
+  const { allRooms, cleaningStatuses, updateCleaningStatus, bookings, t } = useContext(AppContext);
   const [confirming, setConfirming] = useState<{roomNumber: string, newStatus: 'Clean' | 'Needs Cleaning'} | null>(null);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      runDailyCleaningReset();
-    }, 1000); // run on load
-    
-    // This is a simulation. A real app would use a cron job.
-    const interval = setInterval(() => {
-        const now = new Date();
-        if(now.getHours() === 23 && now.getMinutes() === 59) {
-            runDailyCleaningReset();
-        }
-    }, 60000); // Check every minute
-
-    return () => {
-        clearTimeout(timer);
-        clearInterval(interval);
-    };
-  }, [runDailyCleaningReset]);
-
 
   const roomOccupancyStatuses = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -33,14 +14,13 @@ const CleaningPage: React.FC = () => {
     allRooms.forEach(room => statuses[room.number] = [t('vacant')]);
     
     bookings.forEach(b => {
-      const checkInDate = b.checkIn;
-      const checkOutDate = b.checkOut;
+      const checkInDate = b.checkIn.split('T')[0];
+      const checkOutDate = b.checkOut.split('T')[0];
       const isInHouse = today >= checkInDate && today < checkOutDate;
 
       b.rooms.forEach(roomNum => {
         if (!statuses[roomNum]) return;
         
-        // Clear default 'vacant' if any other status applies
         if (statuses[roomNum][0] === t('vacant')) {
             statuses[roomNum] = [];
         }
@@ -49,8 +29,8 @@ const CleaningPage: React.FC = () => {
         if (checkOutDate === today) statuses[roomNum].push(t('check_out'));
         if (isInHouse) statuses[roomNum].push(t('in_house'));
         
-        // Remove duplicates
         statuses[roomNum] = [...new Set(statuses[roomNum])];
+        if(statuses[roomNum].length === 0) statuses[roomNum].push(t('vacant'))
       });
     });
     return statuses;

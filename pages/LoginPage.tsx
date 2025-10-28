@@ -5,7 +5,7 @@ import { Logo } from '../components/Icons';
 import { Language } from '../types';
 
 interface LoginPageProps {
-  onLogin: (user: string, pass: string) => boolean;
+  onLogin: (user: string, pass: string) => Promise<boolean>;
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
@@ -13,12 +13,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('admin2');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!onLogin(username, password)) {
+    setError('');
+    setIsLoading(true);
+    const success = await onLogin(username, password);
+    if (!success) {
       setError('Invalid username or password');
     }
+    setIsLoading(false);
   };
   
   const handleSetLanguage = (lang: Language) => {
@@ -59,9 +64,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <button
             type="submit"
-            className="w-full py-3 bg-[#e6c872] text-white rounded-lg font-semibold hover:bg-amber-500 transition-colors shadow-md"
+            className="w-full py-3 bg-[#e6c872] text-white rounded-lg font-semibold hover:bg-amber-500 transition-colors shadow-md disabled:bg-gray-400"
+            disabled={isLoading}
           >
-            {t('login')}
+            {isLoading ? 'Logging in...' : t('login')}
           </button>
         </form>
       </div>

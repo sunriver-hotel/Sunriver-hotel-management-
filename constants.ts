@@ -1,40 +1,5 @@
+
 import { Room, Translations } from './types';
-
-// FIX: The `.sort()` method call was preventing TypeScript from using the contextual type `Room[]` for the array literal.
-// This caused properties like `view` to be inferred as `string` instead of `RoomView`.
-// Casting the array to `Room[]` before sorting resolves the issue.
-export const ALL_ROOMS: Room[] = ([
-  // River view (Double bed)
-  { number: '102', floor: 1, view: 'River view', bedType: 'Double bed' },
-  { number: '104', floor: 1, view: 'River view', bedType: 'Double bed' },
-  { number: '206', floor: 2, view: 'River view', bedType: 'Double bed' },
-  { number: '208', floor: 2, view: 'River view', bedType: 'Double bed' },
-  { number: '210', floor: 2, view: 'River view', bedType: 'Double bed' },
-  { number: '212', floor: 2, view: 'River view', bedType: 'Double bed' },
-  { number: '302', floor: 3, view: 'River view', bedType: 'Double bed' },
-  { number: '304', floor: 3, view: 'River view', bedType: 'Double bed' },
-  { number: '306', floor: 3, view: 'River view', bedType: 'Double bed' },
-  { number: '308', floor: 3, view: 'River view', bedType: 'Double bed' },
-  { number: '310', floor: 3, view: 'River view', bedType: 'Double bed' },
-  { number: '312', floor: 3, view: 'River view', bedType: 'Double bed' },
-  // Standard view (Double bed)
-  { number: '101', floor: 1, view: 'Standard view', bedType: 'Double bed' },
-  { number: '103', floor: 1, view: 'Standard view', bedType: 'Double bed' },
-  { number: '105', floor: 1, view: 'Standard view', bedType: 'Double bed' },
-  { number: '205', floor: 2, view: 'Standard view', bedType: 'Double bed' },
-  { number: '209', floor: 2, view: 'Standard view', bedType: 'Double bed' },
-  { number: '305', floor: 3, view: 'Standard view', bedType: 'Double bed' },
-  { number: '309', floor: 3, view: 'Standard view', bedType: 'Double bed' },
-  // Standard view (Twin bed)
-  { number: '201', floor: 2, view: 'Standard view', bedType: 'Twin bed' },
-  { number: '203', floor: 2, view: 'Standard view', bedType: 'Twin bed' },
-  { number: '301', floor: 3, view: 'Standard view', bedType: 'Twin bed' },
-  { number: '303', floor: 3, view: 'Standard view', bedType: 'Twin bed' },
-  // Cottage (Double bed)
-  { number: '100', floor: 1, view: 'Cottage', bedType: 'Double bed' },
-] as Room[]).sort((a,b) => parseInt(a.number) - parseInt(b.number));
-
-export const TOTAL_ROOMS = ALL_ROOMS.length;
 
 export const translations: Translations = {
   en: {
