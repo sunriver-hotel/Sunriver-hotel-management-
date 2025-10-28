@@ -96,6 +96,9 @@ const Layout: React.FC<LayoutProps> = ({ children, activePage, setActivePage }) 
             onClick={logout}
           />
         </div>
+        <div className="text-center text-xs text-gray-400 pb-4">
+          Version 0.9
+        </div>
       </aside>
 
       {/* --- MAIN WRAPPER (for mobile layout and desktop content) --- */}
