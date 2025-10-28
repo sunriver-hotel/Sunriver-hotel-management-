@@ -225,7 +225,7 @@ const App: React.FC = () => {
   if (!isAuthenticated) {
     return (
       <AppContext.Provider value={contextValue}>
-        <LoginPage onLogin={login} onBypass={() => setIsAuthenticated(true)} />
+        <LoginPage onLogin={login} />
       </AppContext.Provider>
     );
   }
