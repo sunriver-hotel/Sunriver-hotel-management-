@@ -13,16 +13,17 @@ export default async function handler(
   try {
     const rooms = await prisma.room.findMany({
       orderBy: {
-        // Sort numerically, not lexicographically
-        roomId: 'asc',
+        // FIX: Use snake_case 'room_id' to match the database schema.
+        room_id: 'asc',
       },
     });
 
-    const formattedRooms = rooms.map(r => ({
-        number: r.roomNumber,
+    // FIX: Use snake_case properties to match the database schema.
+    const formattedRooms = rooms.map((r: any) => ({
+        number: r.room_number,
         floor: r.floor,
-        view: r.roomType,
-        bedType: r.bedType,
+        view: r.room_type,
+        bedType: r.bed_type,
     }));
 
     res.status(200).json({ rooms: formattedRooms });
