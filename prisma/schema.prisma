@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Rooms {
+  room_id     Int      @id @default(autoincrement())
+  room_number String   @unique
+  room_type   String
+  bed_type    String
+  floor       Int
+
+  // ความสัมพันธ์
+  bookings          Bookings[]
+  cleaning_statuses Cleaning_Statuses?
+}
+
+model Customers {
+  customer_id   Int       @id @default(autoincrement())
+  customer_name String
+  phone         String
+  email         String?
+  address       String?
+  tax_id        String?
+
+  // ความสัมพันธ์
+  bookings Bookings[]
+}
+
+model Bookings {
+  booking_id     String   @id @default(uuid()) // Prisma จะใช้ UUID แทนฟังก์ชัน generate_booking_id()
+  customer_id    Int
+  room_id        Int
+  check_in_date  DateTime
+  check_out_date DateTime
+  status         String   @default("Unpaid")
+  price_per_night Decimal  @default(800.00)
+  deposit         Decimal  @default(0.00)
+  created_at     DateTime @default(now())
+
+  // ความสัมพันธ์
+  customer Customers @relation(fields: [customer_id], references: [customer_id])
+  room     Rooms     @relation(fields: [room_id], references: [room_id])
+}
+
+model Cleaning_Statuses {
+  cleaning_status_id Int      @id @default(autoincrement())
+  room_id            Int      @unique
+  status             String
+  last_updated       DateTime @default(now())
+
+  // ความสัมพันธ์
+  room Rooms @relation(fields: [room_id], references: [room_id])
+}
+
+model Users {
+  user_id       Int    @id @default(autoincrement())
+  username      String @unique
+  password_hash String
+  user_role     String
+}
