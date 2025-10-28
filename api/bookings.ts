@@ -67,7 +67,7 @@ async function handleGET(req: VercelRequest, res: VercelResponse) {
       room: true,
     },
     orderBy: {
-        created_at: 'desc'
+        createdAt: 'desc'
     }
   });
   const formatted = formatBookings(dbBookings);
@@ -87,27 +87,27 @@ async function handlePOST(req: VercelRequest, res: VercelResponse) {
 
   const newBooking = await prisma.$transaction(async (tx) => {
     const customer = await tx.customer.create({
-      data: { customer_name: customerName, phone, email, address, tax_id: taxId },
+      data: { customerName: customerName, phone, email, address, taxId: taxId },
     });
 
     const dbRooms = await tx.room.findMany({
-        where: { room_number: { in: rooms } }
+        where: { roomNumber: { in: rooms } }
     });
     
     if(dbRooms.length !== rooms.length) {
         throw new Error("One or more rooms not found");
     }
 
-    const bookingCreates = dbRooms.map((room: any) => tx.booking.create({
+    const bookingCreates = dbRooms.map((room) => tx.booking.create({
       data: {
-        booking_group_id,
-        customer_id: (customer as any).customer_id,
-        room_id: room.room_id,
-        check_in_date: new Date(checkIn),
-        check_out_date: new Date(checkOut),
+        bookingGroupId: booking_group_id,
+        customerId: customer.customerId,
+        roomId: room.roomId,
+        checkInDate: new Date(checkIn),
+        checkOutDate: new Date(checkOut),
         status,
         deposit: depositAmount,
-        price_per_night: price_per_night,
+        pricePerNight: price_per_night,
       }
     }));
     await Promise.all(bookingCreates);
@@ -129,8 +129,8 @@ async function handlePUT(req: VercelRequest, res: VercelResponse) {
 
     const updatedBookingData = await prisma.$transaction(async (tx) => {
         const existingBooking = await tx.booking.findFirst({
-            where: { booking_group_id },
-            select: { customer_id: true }
+            where: { bookingGroupId: booking_group_id },
+            select: { customerId: true }
         });
 
         if (!existingBooking) {
@@ -138,16 +138,16 @@ async function handlePUT(req: VercelRequest, res: VercelResponse) {
         }
 
         await tx.customer.update({
-            where: { customer_id: (existingBooking as any).customer_id },
-            data: { customer_name: customerName, phone, email, address, tax_id: taxId },
+            where: { customerId: existingBooking.customerId },
+            data: { customerName: customerName, phone, email, address, taxId: taxId },
         });
 
         await tx.booking.deleteMany({
-            where: { booking_group_id }
+            where: { bookingGroupId: booking_group_id }
         });
 
         const dbRooms = await tx.room.findMany({
-            where: { room_number: { in: rooms } }
+            where: { roomNumber: { in: rooms } }
         });
         if(dbRooms.length !== rooms.length) {
             throw new Error("One or more rooms not found");
@@ -155,16 +155,16 @@ async function handlePUT(req: VercelRequest, res: VercelResponse) {
         
         const price_per_night = (totalPrice / rooms.length) / (Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 3600 * 24)) || 1);
 
-        const bookingCreates = dbRooms.map((room: any) => tx.booking.create({
+        const bookingCreates = dbRooms.map((room) => tx.booking.create({
             data: {
-              booking_group_id,
-              customer_id: (existingBooking as any).customer_id,
-              room_id: room.room_id,
-              check_in_date: new Date(checkIn),
-              check_out_date: new Date(checkOut),
+              bookingGroupId: booking_group_id,
+              customerId: existingBooking.customerId,
+              roomId: room.roomId,
+              checkInDate: new Date(checkIn),
+              checkOutDate: new Date(checkOut),
               status,
               deposit: depositAmount,
-              price_per_night: price_per_night,
+              pricePerNight: price_per_night,
             }
         }));
         await Promise.all(bookingCreates);
@@ -186,27 +186,27 @@ async function handleDELETE(req: VercelRequest, res: VercelResponse) {
 
     await prisma.$transaction(async (tx) => {
         const bookingsToDelete = await tx.booking.findMany({
-            where: { booking_group_id },
-            select: { customer_id: true }
+            where: { bookingGroupId: booking_group_id },
+            select: { customerId: true }
         });
 
         if (bookingsToDelete.length === 0) {
             return;
         }
 
-        const customer_id = (bookingsToDelete[0] as any).customer_id;
+        const customerId = bookingsToDelete[0].customerId;
 
         await tx.booking.deleteMany({
-            where: { booking_group_id }
+            where: { bookingGroupId: booking_group_id }
         });
 
         const otherBookings = await tx.booking.count({
-            where: { customer_id }
+            where: { customerId }
         });
 
         if (otherBookings === 0) {
             await tx.customer.delete({
-                where: { customer_id }
+                where: { customerId }
             });
         }
     });

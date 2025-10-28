@@ -30,7 +30,7 @@ async function handleGET(req: VercelRequest, res: VercelResponse) {
     include: {
       room: {
         select: {
-          room_number: true
+          roomNumber: true
         }
       }
     }
@@ -46,15 +46,13 @@ async function handlePUT(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ message: 'Invalid input' });
   }
   
-  // FIX: Use snake_case 'room_number' to find the room.
-  const room = await prisma.room.findUnique({ where: { room_number: roomNumber } });
+  const room = await prisma.room.findUnique({ where: { roomNumber: roomNumber } });
   if (!room) {
     return res.status(404).json({ message: 'Room not found' });
   }
 
-  // FIX: Use snake_case 'room_id' to update the status.
   const updatedStatus = await prisma.cleaningStatus.update({
-    where: { room_id: (room as any).room_id },
+    where: { roomId: room.roomId },
     data: { status },
   });
 

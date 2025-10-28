@@ -87,7 +87,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             </form>
         </div>
         <div className="text-center text-sm text-gray-500 mt-4">
-            Version 0.903
+            Version 0.904
         </div>
       </div>
     </div>
