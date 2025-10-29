@@ -58,7 +58,7 @@ const App: React.FC = () => {
           
           const cleaningMap: Record<string, CleaningStatus> = {};
           (cleaningData.statuses || []).forEach((s: any) => {
-            cleaningMap[s.room.room_number] = { roomNumber: s.room.room_number, status: s.status };
+            cleaningMap[s.room.roomNumber] = { roomNumber: s.room.roomNumber, status: s.status };
           });
           setCleaningStatuses(cleaningMap);
 
