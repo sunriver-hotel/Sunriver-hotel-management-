@@ -1,32 +1,31 @@
-
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import prisma from '../lib/prisma';
 
 // Helper to format bookings for the frontend
 const formatBookings = (dbBookings: any[]) => {
   const groupedBookings = dbBookings.reduce((acc, b) => {
-    // FIX: Use snake_case properties to match the database schema.
-    const groupId = b.booking_group_id;
+    // Prisma client returns camelCase properties, e.g., bookingGroupId
+    const groupId = b.bookingGroupId;
     if (!acc[groupId]) {
       acc[groupId] = {
         id: groupId,
-        customerName: b.customer.customer_name,
+        customerName: b.customer.customerName,
         phone: b.customer.phone,
         email: b.customer.email,
         address: b.customer.address,
-        taxId: b.customer.tax_id,
-        checkIn: b.check_in_date.toISOString(),
-        checkOut: b.check_out_date.toISOString(),
+        taxId: b.customer.taxId,
+        checkIn: b.checkInDate.toISOString(),
+        checkOut: b.checkOutDate.toISOString(),
         status: b.status,
         depositAmount: b.deposit,
-        createdAt: b.created_at.toISOString(),
+        createdAt: b.createdAt.toISOString(),
         rooms: [],
         totalPrice: 0,
       };
     }
-    acc[groupId].rooms.push(b.room.room_number);
-    const nights = Math.ceil((new Date(b.check_out_date).getTime() - new Date(b.check_in_date).getTime()) / (1000 * 3600 * 24)) || 1;
-    acc[groupId].totalPrice += Number(b.price_per_night) * nights;
+    acc[groupId].rooms.push(b.room.roomNumber);
+    const nights = Math.ceil((new Date(b.checkOutDate).getTime() - new Date(b.checkInDate).getTime()) / (1000 * 3600 * 24)) || 1;
+    acc[groupId].totalPrice += Number(b.pricePerNight) * nights;
     
     return acc;
   }, {} as Record<string, any>);
